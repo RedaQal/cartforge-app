@@ -1,0 +1,29 @@
+name: cartforge-ci
+
+services:
+  jenkins:
+    build: ./jenkins
+    user: root   # needed to use the Docker socket, see ADR below
+    ports:
+      - "8090:8080"
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      GITHUB_OWNER: ${GITHUB_OWNER}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+
+volumes:
+  jenkins-home:
+  registry-data:
