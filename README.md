@@ -1,6 +1,8 @@
 # 🛒 CartForge
 
-> An e-commerce platform built to practice **real-world DevOps**: microservices, CI/CD, Kubernetes and observability, all running locally.
+## Why this project
+
+I built CartForge to learn how software is actually delivered in production teams, not just how to write it. Every phase adds one real-world practice: containers, CI, Kubernetes, GitOps, monitoring, and security scanning.
 
 ![Status](https://img.shields.io/badge/status-in%20progress-orange)
 ![Java](https://img.shields.io/badge/Java-21-blue)
@@ -40,6 +42,39 @@ flowchart LR
 | Observability | Prometheus, Grafana, Spring Actuator / Micrometer |
 | Security | Trivy, SonarQube, OWASP Dependency-Check |
 
+## Project structure
+
+```
+cartforge-app/
+├── services/
+│   └── catalog-service/    # Spring Boot API (products), Flyway migrations, Dockerfile
+├── frontend/               # Next.js app, Dockerfile
+├── docs/adr/               # Architecture decision records
+├── docker-compose.yml      # Full local stack: db + backend + frontend
+├── CONTRIBUTING.md
+└── README.md
+```
+
+## API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/products` | List all products |
+| GET | `/api/products/{id}` | Get one product (404 if unknown) |
+| GET | `/actuator/health` | Liveness and readiness probes |
+| GET | `/actuator/prometheus` | Metrics for Prometheus |
+
+## Container images
+
+Multi-stage builds, non-root users, and dependency layer caching:
+
+| Image | Base | Size (compressed) | Runs as |
+|---|---|---|---|
+| catalog-service | `eclipse-temurin:21-jre-alpine` | ~127 MB | non-root (`app`) |
+| frontend | `node:24-alpine` (Next.js standalone output) | ~75 MB | non-root (`node`) |
+
+Build tools (Maven, JDK, dev dependencies) stay in the build stage and never reach the final image.
+
 ## Repositories
 
 - **cartforge-app**: application code (this repo)
@@ -58,7 +93,7 @@ flowchart LR
 
 - [x] Phase 0: repository foundations
 - [x] Phase 1: catalog-service + Next.js frontend (MVP)
-- [ ] Phase 2: Dockerfiles and docker-compose
+- [x] Phase 2: Dockerfiles and docker-compose
 - [ ] Phase 3: Jenkins CI pipeline
 - [ ] Phase 4: Kubernetes deployment with Helm
 - [ ] Phase 5: CD with dev / staging / prod environments
@@ -68,7 +103,51 @@ flowchart LR
 
 ## Getting started
 
-Setup instructions will be added as each phase lands. Prerequisites: Docker Desktop, JDK 21, Node.js LTS, kubectl, Minikube, Helm.
+### Run the whole stack (Docker only)
+
+**Prerequisite:** Docker Desktop (or Docker Engine with Compose v2).
+
+```bash
+git clone https://github.com/RedaQal/cartforge-app.git
+cd cartforge-app
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Catalog API | http://localhost:8080/api/products |
+| Backend health | http://localhost:8080/actuator/health |
+| Frontend health | http://localhost:3000/api/health |
+| Prometheus metrics | http://localhost:8080/actuator/prometheus |
+
+Stop everything with `docker compose down` (add `-v` to also delete the database volume).
+
+### Local development (without containers for the apps)
+
+**Prerequisites:** JDK 21, Node.js LTS, Docker (for PostgreSQL and Testcontainers).
+
+```bash
+# 1. database
+docker compose up -d db
+
+# 2. backend
+cd services/catalog-service
+./mvnw spring-boot:run
+
+# 3. frontend (new terminal)
+cd frontend
+echo "CATALOG_API_URL=http://localhost:8080" > .env.local
+npm install
+npm run dev
+```
+
+### Run the tests
+
+```bash
+cd services/catalog-service
+./mvnw verify      # integration tests use Testcontainers, Docker must be running
+```
 
 ## License
 
