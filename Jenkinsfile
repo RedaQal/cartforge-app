@@ -50,8 +50,12 @@ pipeline {
 
     stage('Docker build') {
       steps {
-        sh 'docker build -t $REGISTRY/catalog-service:$IMAGE_TAG services/catalog-service'
-        sh 'docker build -t $REGISTRY/frontend:$IMAGE_TAG frontend'
+        retry(2) {
+          sh 'docker build -t $REGISTRY/catalog-service:$IMAGE_TAG services/catalog-service'
+        }
+        retry(2) {
+          sh 'docker build -t $REGISTRY/frontend:$IMAGE_TAG frontend'
+        }
       }
     }
 
