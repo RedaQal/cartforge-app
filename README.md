@@ -94,7 +94,7 @@ Build tools (Maven, JDK, dev dependencies) stay in the build stage and never rea
 - [x] Phase 0: repository foundations
 - [x] Phase 1: catalog-service + Next.js frontend (MVP)
 - [x] Phase 2: Dockerfiles and docker-compose
-- [ ] Phase 3: Jenkins CI pipeline
+- [x] Phase 3: Jenkins CI pipeline
 - [ ] Phase 4: Kubernetes deployment with Helm
 - [ ] Phase 5: CD with dev / staging / prod environments
 - [ ] Phase 6: Prometheus and Grafana monitoring
