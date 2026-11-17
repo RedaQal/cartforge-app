@@ -7,7 +7,10 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '10'))
     timeout(time: 30, unit: 'MINUTES')
   }
-
+  parameters {
+    booleanParam(name: 'RUN_TRIVY', defaultValue: false,
+                 description: 'Scan images with Trivy (needs large cached vulnerability databases)')
+  }
   environment {
     REGISTRY = 'localhost:5000'
   }
@@ -60,6 +63,7 @@ pipeline {
     }
 
     stage('Trivy scan') {
+      when { expression { params.RUN_TRIVY } }
       options { timeout(time: 15, unit: 'MINUTES') }
       steps {
         script {
