@@ -1,0 +1,35 @@
+name: cartforge-ci
+
+services:
+  jenkins:
+    build: ./jenkins
+    user: root
+    ports:
+      - "8090:8080"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      GITHUB_OWNER: ${GITHUB_OWNER}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+      MAVEN_OPTS: "-Djava.net.preferIPv4Stack=true -Dmaven.repo.local=/var/jenkins_home/.m2/repository"
+      MAVEN_USER_HOME: /var/jenkins_home/.m2
+      npm_config_cache: /var/jenkins_home/.npm
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+
+volumes:
+  jenkins-home:
+  registry-data:
