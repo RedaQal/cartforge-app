@@ -57,7 +57,7 @@ flowchart LR
 ## Roadmap
 
 - [x] Phase 0: repository foundations
-- [ ] Phase 1: catalog-service + Next.js frontend (MVP)
+- [x] Phase 1: catalog-service + Next.js frontend (MVP)
 - [ ] Phase 2: Dockerfiles and docker-compose
 - [ ] Phase 3: Jenkins CI pipeline
 - [ ] Phase 4: Kubernetes deployment with Helm
