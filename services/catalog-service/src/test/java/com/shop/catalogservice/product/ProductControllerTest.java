@@ -17,7 +17,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
-class ProductControllerIT {
+class ProductControllerTest {
 
     @Container
     @ServiceConnection
