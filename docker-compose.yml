@@ -11,5 +11,31 @@ services:
       test: ["CMD-SHELL", "pg_isready -U catalog"]
       interval: 5s
       retries: 10
+
+  catalog-service:
+    build: ./services/catalog-service
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/catalog
+      DB_USER: catalog
+      DB_PASSWORD: catalog
+    ports: ["8080:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    environment:
+      CATALOG_API_URL: http://catalog-service:8080
+    ports: ["3000:3000"]
+    depends_on:
+      catalog-service:
+        condition: service_healthy
+
 volumes:
   db-data:
