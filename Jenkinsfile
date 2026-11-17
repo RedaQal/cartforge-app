@@ -60,10 +60,11 @@ pipeline {
     }
 
     stage('Trivy scan') {
+      options { timeout(time: 15, unit: 'MINUTES') }
       steps {
         script {
           ['catalog-service', 'frontend'].each { img ->
-            sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/ aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed ${env.REGISTRY}/${img}:${env.IMAGE_TAG}"
+            sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/ aquasec/trivy:latest image --skip-java-db-update --no-progress --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed ${env.REGISTRY}/${img}:${env.IMAGE_TAG}"
           }
         }
       }
