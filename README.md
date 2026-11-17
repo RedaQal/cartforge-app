@@ -148,7 +148,44 @@ npm run dev
 cd services/catalog-service
 ./mvnw verify      # integration tests use Testcontainers, Docker must be running
 ```
+## CI pipeline
 
+Jenkins runs locally in Docker and builds every branch and pull request of this repository through a multibranch pipeline defined in the [`Jenkinsfile`](Jenkinsfile).
+
+| Stage | What it does |
+|---|---|
+| Prepare | Computes the image tag from the git commit SHA |
+| Build & test (parallel) | Backend: `mvnw verify` with Testcontainers. Frontend: `npm ci`, lint, build |
+| Docker build | Builds both images tagged with the commit SHA |
+| Trivy scan | Optional (`RUN_TRIVY` build parameter): fails on HIGH/CRITICAL vulnerabilities |
+| Push | `main` only: pushes images to the local registry |
+
+### Start the CI stack
+
+```bash
+cd ci
+cp .env.example .env        # then edit the values (admin password, GitHub user and token)
+docker compose up -d --build
+```
+
+Jenkins: http://localhost:8090. Local registry: `localhost:5000`. Jenkins is configured as code (`ci/jenkins/casc.yaml`), so there is no manual setup wizard. Create the multibranch pipeline job once from the UI, pointing at this repository.
+
+### Check the pushed images
+
+```bash
+curl localhost:5000/v2/_catalog
+```
+
+![Jenkins pipeline](docs/images/jenkins-pipeline.png)
+
+## Troubleshooting
+
+| Problem | Cause and fix |
+|---|---|
+| `Could not transfer ... repo.maven.apache.org` or `bad address` during a build | Docker's DNS is flaky. Set `"dns": ["1.1.1.1", "8.8.8.8"]` in Docker Desktop → Settings → Docker Engine, then restart Docker. |
+| `permission denied` on `./mvnw` in Jenkins | The script lost its executable bit on Windows. Run `git update-index --chmod=+x services/catalog-service/mvnw`. |
+| `/bin/sh^M: bad interpreter` | Windows line endings. The repo's `.gitattributes` forces LF. Run `git add --renormalize .`. |
+| Pipeline aborted during the Trivy stage | Trivy was downloading its large vulnerability databases. It is opt-in for that reason. |
 ## License
 
 MIT
