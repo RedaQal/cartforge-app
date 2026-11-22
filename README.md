@@ -19,14 +19,14 @@ CartForge is intentionally small on features and serious on engineering. The goa
 ```mermaid
 flowchart LR
     Dev[Developer] -->|pull request| GH[GitHub]
-    GH -->|webhook| J[Jenkins]
-    J -->|build, test, scan| R[(Image registry)]
-    J -->|deploy| K8s
+    GH -->|scan| J[Jenkins]
+    J -->|build, test, push| R[(Local registry)]
+    GO[cartforge-gitops<br/>Helm chart and values] -->|"helm upgrade, manual for now"| K8s
+    R -->|image pull| K8s
     subgraph K8s[Minikube cluster]
-        FE[Next.js frontend] --> CAT[catalog-service]
-        CAT --> DB[(PostgreSQL)]
+        ING[Ingress] --> FE[Next.js frontend] --> CAT[catalog-service] --> DB[(PostgreSQL)]
     end
-    K8s -.metrics.-> P[Prometheus] --> G[Grafana]
+    K8s -.planned.-> P[Prometheus] --> G[Grafana]
 ```
 
 ## Tech stack
@@ -49,11 +49,15 @@ cartforge-app/
 ├── services/
 │   └── catalog-service/    # Spring Boot API (products), Flyway migrations, Dockerfile
 ├── frontend/               # Next.js app, Dockerfile
+├── ci/                     # Jenkins + local registry (docker compose, config as code)
 ├── docs/adr/               # Architecture decision records
+├── Jenkinsfile             # CI pipeline
 ├── docker-compose.yml      # Full local stack: db + backend + frontend
 ├── CONTRIBUTING.md
 └── README.md
 ```
+
+Kubernetes configuration lives in the companion repository [cartforge-gitops](https://github.com/RedaQal/cartforge-gitops).
 
 ## API
 
@@ -95,13 +99,15 @@ Build tools (Maven, JDK, dev dependencies) stay in the build stage and never rea
 - [x] Phase 1: catalog-service + Next.js frontend (MVP)
 - [x] Phase 2: Dockerfiles and docker-compose
 - [x] Phase 3: Jenkins CI pipeline
-- [ ] Phase 4: Kubernetes deployment with Helm
+- [x] Phase 4: Kubernetes deployment with Helm
 - [ ] Phase 5: CD with dev / staging / prod environments
 - [ ] Phase 6: Prometheus and Grafana monitoring
 - [ ] Phase 7: order-service, auth-service, API gateway, autoscaling
 - [ ] Phase 8: hardening (NetworkPolicies, RBAC, backups)
 
 ## Getting started
+
+CartForge can run with Docker Compose (quickest) or on Kubernetes (see [Kubernetes deployment](#kubernetes-deployment)).
 
 ### Run the whole stack (Docker only)
 
@@ -178,6 +184,32 @@ curl localhost:5000/v2/_catalog
 
 ![Jenkins pipeline](docs/images/jenkins-pipeline.png)
 
+## Kubernetes deployment
+
+The chart, per-environment values and cluster bootstrap script live in [cartforge-gitops](https://github.com/RedaQal/cartforge-gitops). CI builds and pushes images tagged with the git SHA, and the deployed version is a value stored in that repo.
+
+| Piece | Kubernetes object |
+|---|---|
+| frontend | Deployment + Service, exposed through an Ingress |
+| catalog-service | Deployment + Service (cluster-internal only) |
+| PostgreSQL | StatefulSet + PersistentVolumeClaim |
+| Configuration | environment variables, database credentials in a Secret (never in Git) |
+| Health | liveness, readiness and startup probes on the Actuator and `/api/health` endpoints |
+
+Quick start (details in the gitops README):
+
+```bash
+bash scripts/minikube-up.sh
+helm upgrade --install cartforge charts/cartforge \
+  -n shop-dev -f charts/cartforge/values-dev.yaml --wait
+```
+
+Namespaces `shop-dev`, `shop-staging` and `shop-prod` are created ahead of Phase 5, which adds automated promotion between them.
+
+![kubectl-get-pods](docs/images/kubectl-get-pods.png)
+
+![app-on-minikube](docs/images/app-on-minikube.png)
+
 ## Troubleshooting
 
 | Problem | Cause and fix |
@@ -186,6 +218,8 @@ curl localhost:5000/v2/_catalog
 | `permission denied` on `./mvnw` in Jenkins | The script lost its executable bit on Windows. Run `git update-index --chmod=+x services/catalog-service/mvnw`. |
 | `/bin/sh^M: bad interpreter` | Windows line endings. The repo's `.gitattributes` forces LF. Run `git add --renormalize .`. |
 | Pipeline aborted during the Trivy stage | Trivy was downloading its large vulnerability databases. It is opt-in for that reason. |
+| `ImagePullBackOff` in Kubernetes | The Minikube node can't reach the registry. See the troubleshooting section of cartforge-gitops. |
+| `helm.exe` blocked: "Application Control policy has blocked this file" | Unsigned executables can be blocked on Windows. cartforge-gitops includes a script that runs Helm in a container. |
 ## License
 
 MIT
